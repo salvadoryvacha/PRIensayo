@@ -3,15 +3,29 @@ import { useRef, useState } from "react";
 
 export default function Home() {
   const [showChat, setShowChat] = useState(false);
-  const [messages, setMessages] = useState<string[]>([]);
+  const [messages, setMessages] = useState<{from: string, text: string}[]>([]);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const value = inputRef.current?.value.trim();
     if (value) {
-      setMessages((msgs) => [...msgs, value]);
+      setMessages((msgs) => [...msgs, {from: "user", text: value}]);
       if (inputRef.current) inputRef.current.value = "";
+      setLoading(true);
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: value }),
+        });
+        const data = await res.json();
+        setMessages((msgs) => [...msgs, {from: "gpt", text: data.reply}]);
+      } catch (err) {
+        setMessages((msgs) => [...msgs, {from: "gpt", text: "Error al conectar con la API."}]);
+      }
+      setLoading(false);
     }
   };
 
@@ -26,8 +40,11 @@ export default function Home() {
           <div style={{ background: "#007bff", color: "#fff", padding: 10, borderRadius: "8px 8px 0 0" }}>Chat</div>
           <div id="chat-messages" style={{ height: 200, overflowY: "auto", padding: 10 }}>
             {messages.map((msg, i) => (
-              <div key={i}>Tú: {msg}</div>
+              <div key={i} style={{ color: msg.from === "user" ? "#222" : "#007bff" }}>
+                {msg.from === "user" ? "Tú: " : "GPT: "}{msg.text}
+              </div>
             ))}
+            {loading && <div style={{ color: "#aaa" }}>GPT está escribiendo...</div>}
           </div>
           <form id="chat-form" style={{ display: "flex", borderTop: "1px solid #eee" }} onSubmit={handleSend}>
             <input
@@ -36,8 +53,9 @@ export default function Home() {
               placeholder="Escribe un mensaje..."
               ref={inputRef}
               style={{ flex: 1, padding: 8, border: "none", borderRadius: "0 0 0 8px", outline: "none" }}
+              disabled={loading}
             />
-            <button type="submit" style={{ background: "#007bff", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "0 0 8px 0", cursor: "pointer" }}>
+            <button type="submit" style={{ background: "#007bff", color: "#fff", border: "none", padding: "8px 12px", borderRadius: "0 0 8px 0", cursor: "pointer" }} disabled={loading}>
               Enviar
             </button>
           </form>
