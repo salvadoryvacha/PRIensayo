@@ -22,7 +22,7 @@ export default function Home() {
         });
         const data = await res.json();
         setMessages((msgs) => [...msgs, {from: "gpt", text: data.reply}]);
-      } catch (err) {
+      } catch {
         setMessages((msgs) => [...msgs, {from: "gpt", text: "Error al conectar con la API."}]);
       }
       setLoading(false);
